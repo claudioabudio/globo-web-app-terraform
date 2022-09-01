@@ -15,50 +15,27 @@ data "aws_availability_zones" "available" {
 # RESOURCES
 ##################################################################################
 
-# NETWORKING #
-resource "aws_vpc" "vpc" {
-  cidr_block           = var.vpc_cidrblock
-  enable_dns_hostnames = true
-  tags                 = merge(local.common_tags, { Name = "${local.name_prefix}-vpc" })
+module "vpc" {
+  source = "terraform-aws-modules/vpc/aws"
+
+  version = "=3.10.0"
+  name = "my-vpc"
+  cidr = var.vpc_cidrblock
+
+  azs             = slice(data.aws_availability_zones.available.names, 0, var.vpc_subnet_count)
+  public_subnets = [for i in range(var.vpc_subnet_count) : cidrsubnet(var.vpc_cidrblock, 8, i)]
+
+  enable_nat_gateway = false
+  enable_vpn_gateway = false
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-vpc" })
 }
-
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.vpc.id
-  tags   = local.common_tags
-}
-
-resource "aws_subnet" "subnets" {
-  count                   = var.vpc_subnet_count
-  cidr_block              = cidrsubnet(aws_vpc.vpc.cidr_block, 8, count.index)
-  vpc_id                  = aws_vpc.vpc.id
-  map_public_ip_on_launch = true
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  tags                    = local.common_tags
-}
-
-# ROUTING #
-resource "aws_route_table" "rtb" {
-  vpc_id = aws_vpc.vpc.id
-  tags   = local.common_tags
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
-  }
-}
-
-resource "aws_route_table_association" "rta-subnet" {
-  count          = var.vpc_subnet_count
-  subnet_id      = aws_subnet.subnets[count.index].id
-  route_table_id = aws_route_table.rtb.id
-}
-
 
 # SECURITY GROUPS #
 # Nginx security group 
 resource "aws_security_group" "nginx-sg" {
   name   = "nginx_sg"
-  vpc_id = aws_vpc.vpc.id
+  vpc_id = module.vpc.vpc_id
   tags   = local.common_tags
 
   # HTTP access from anywhere
@@ -66,7 +43,7 @@ resource "aws_security_group" "nginx-sg" {
     from_port   = var.http_port
     to_port     = var.http_port
     protocol    = "tcp"
-    cidr_blocks = [aws_vpc.vpc.cidr_block]
+    cidr_blocks = [var.vpc_cidrblock]
   }
 
   # SSH access for troubleshooting 
@@ -89,7 +66,7 @@ resource "aws_security_group" "nginx-sg" {
 #  Load balancer security group 
 resource "aws_security_group" "alb-sg" {
   name   = "nginx_alb_sg"
-  vpc_id = aws_vpc.vpc.id
+  vpc_id = module.vpc.vpc_id
   tags   = local.common_tags
 
   # HTTP access from anywhere

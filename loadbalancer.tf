@@ -44,7 +44,7 @@ resource "aws_lb_listener" "nginx_lbl" {
 }
 
 resource "aws_lb_target_group_attachment" "nginxs" {
-  count            = var.instance_count
+  count            = var.instance_count[terraform.workspace]
   target_group_arn = aws_lb_target_group.nginx-tg.arn
   target_id        = aws_instance.nginxs[count.index].id
   port             = 80

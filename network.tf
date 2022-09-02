@@ -20,10 +20,10 @@ module "vpc" {
 
   version = "=3.10.0"
   name = "my-vpc"
-  cidr = var.vpc_cidrblock
+  cidr = var.vpc_cidrblock[terraform.workspace]
 
-  azs             = slice(data.aws_availability_zones.available.names, 0, var.vpc_subnet_count)
-  public_subnets = [for i in range(var.vpc_subnet_count) : cidrsubnet(var.vpc_cidrblock, 8, i)]
+  azs             = slice(data.aws_availability_zones.available.names, 0, var.vpc_subnet_count[terraform.workspace])
+  public_subnets = [for i in range(var.vpc_subnet_count[terraform.workspace]) : cidrsubnet(var.vpc_cidrblock[terraform.workspace], 8, i)]
 
   enable_nat_gateway = false
   enable_vpn_gateway = false
@@ -43,7 +43,7 @@ resource "aws_security_group" "nginx-sg" {
     from_port   = var.http_port
     to_port     = var.http_port
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidrblock]
+    cidr_blocks = [var.vpc_cidrblock[terraform.workspace]]
   }
 
   # SSH access for troubleshooting 

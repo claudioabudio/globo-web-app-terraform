@@ -4,23 +4,20 @@ variable "aws_region" {
 }
 
 variable "aws_instance_type" {
-  type    = string
-  default = "t2.micro"
+  type    = map(string)
 }
 
 variable "vpc_cidrblock" {
-  type    = string
-  default = "10.0.0.0/16"
+  type    = map(string)
+  description = "Base cidr block for the VPC"
 }
 
 variable "vpc_subnet_count" {
-  type    = number
-  default = 2
+  type    = map(number)
 }
 
 variable "instance_count" {
-  type    = number
-  default = 2
+  type    = map(number)
 }
 
 variable "http_port" {
